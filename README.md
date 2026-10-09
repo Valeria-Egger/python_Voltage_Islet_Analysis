@@ -142,14 +142,14 @@ with $\mu f$ = mean of frequencies, $\sigma f$ = standard deviation of frequenci
 These dataframes are being saved as pickles (.pkl) to preserve python objects and avoid loading the entire timeseries into the storage space when I can simply work on the dataframe itself.
 Furthermore more characteristics may be calculated once I find the need for them. 
  ## Limitations and future plans
- -hardcoded saving variables will be removed/exchanged with an UI
- -hardcoded entry paths may be considered to be exchanged with an UI
- -hardcoded thresholds and variables will be reconsidered
- -peak detection on Calcium needs refinement
-   -there is a bug in the peak detection for Calcium overall making the output of n_events always 0 although peaks are being detected
-  -peak detection on Voltage traces is still crude and may be improved
-  -dual imaging napari ROI picker will be improved
-  -plotting and analysis will be separated 
-  -more tests may be carried out to see performance also on Calcium datasets
-  -Dependencies will be evaluated
+ -hardcoded saving variables will be removed/exchanged with an UI \
+ -hardcoded entry paths may be considered to be exchanged with an UI \
+ -hardcoded thresholds and variables will be reconsidered \
+ -peak detection on Calcium needs refinement \
+   -there is a bug in the peak detection for Calcium overall making the output of n_events always 0 although peaks are being detected \
+  -peak detection on Voltage traces is still crude and may be improved \
+  -dual imaging napari ROI picker will be improved \
+  -plotting and analysis will be separated \
+  -more tests may be carried out to see performance also on Calcium datasets \
+  -Dependencies will be evaluated \
   -...
