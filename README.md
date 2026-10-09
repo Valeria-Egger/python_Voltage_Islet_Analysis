@@ -1,7 +1,7 @@
 # python_Voltage_Islet_Analysis
 This repository includes the current Voltage Islet Analysis pipeline. This code is still in very active development and changes nearly every day. Only some of those changes will be commited to the GitHub if they prove to be substantial enough to justify a commit. It is also already used regularly for analysis of my own data. To maintain reproducibility the version that the data has been analyzed with is being documented.
 
-This code has been developed by me to analyse experimental data. Therefore the reasoning of every step will be explained in this ReadMe. It also means that the reasoning of every step is still very much under constant interrogation and may change any time. Since I started learning python 6 months ago, some of the concepts and design choices may reflect on this learning curve. 
+This code has been developed by me to analyse experimental data. Therefore the reasoning of every step will be explained in this ReadMe. It also means that the reasoning of every step is still very much under constant interrogation and may change any time. Since I started learning python 6 months ago, some of the concepts and design choices may reflect on this learning curve. \
 **About AI usage**\
 AI has been used for synthax and Debugging help. This is due to the fact that I am learning python while writing this analysis. Therefore I use a mixture of StackOverFlow and AI to find out how to phrase the needed commands.
 
