@@ -2,7 +2,7 @@
 This repository includes the current Voltage Islet Analysis pipeline. This code is still in very active development and changes nearly every day. Only some of those changes will be commited to the GitHub if they prove to be substantial enough to justify a commit. It is also already used regularly for analysis of my own data. To maintain reproducibility the version that the data has been analyzed with is being documented.
 
 This code has been developed by me to analyse experimental data. Therefore the reasoning of every step will be explained in this ReadMe. It also means that the reasoning of every step is still very much under constant interrogation and may change any time. Since I started learning python 6 months ago, some of the concepts and design choices may reflect on this learning curve. 
-## About AI usage
+**About AI usage**\
 AI has been used for synthax and Debugging help. This is due to the fact that I am learning python while writing this analysis. Therefore I use a mixture of StackOverFlow and AI to find out how to phrase the needed commands.
 
 ## Intented workflow
@@ -67,7 +67,7 @@ Motion correction:
 As motion correction NormCorre is used. NormCorre is a rigid and non-rigid motion correction algorithm that splits the image into overlapping patches and arranges each patch to a template it creates out of the first few hundred frames of the time series. It has been developed for in vivo motion correction and can therefore correct for breathing, heartbeat and blood flow but also deformations of the islet in the ex vivo culture. \
 Source:
 (https://www.sciencedirect.com/science/article/pii/S0165027017302753) \
-**Preprocessing steps:** \
+**Preprocessing steps (Voltage imaging):** \
 The mean intensity of each ROI is stored as an 3D array with form HxWxT.
 For baseline estimation a lowpass filter is being applied to the trace. This filters out all frequencies above a certain cutoff that is dependent on the sampling frequency in the following manner: \
 Cutoff: $\frac{0.05}{\frac{f_s}{2}}$ \
@@ -80,7 +80,7 @@ with dff = normalized trace, $F_t$ = trace at time t, $F_0$ = baseline \
 
 This normalization step already helps with bleaching, removes artefacts and let’s the trace start at 0. The changes are easily converted in percentages by multiplying them with 100, which makes comparisons easier and amplitude more intuitive. 
 According to literature voltage events from this sensor (Voltron2) are most commonly found in the 3-8% range, sometimes they can be higher (up to 15-20%) but the expected range is mostly 3-8%. \
-**Peak Detection:** \
+**Peak Detection (Voltage Imaging):** \
 For peak detection a Z-score algorithm was implemented. 
 First of all the median of the trace is added to the dff to restore the baseline of the trace and prevents events from contaminating the Z-scores.
 Then a quiet window is defined using the upper 50 percent for the residual trace that is the quiet window. This is because voltron2 produces downwards spikes therefore there is a higher probability that anything in these upper 50% of the trace are not signals but noise.
@@ -104,6 +104,19 @@ with $\mu$ = mean of the dataset, $x_i$ = datapoint at each timepoint, $\sigma$ 
 Right now in order to call something an event hard threshold are defined. For onset of an event a threshold of -3 has to be met. For this event to stop being an event the signal has to return to a Z-score of under -2. Whenever the trace drops below the -3 mark the detector starts calling $x_i$ an event. This event stops only when the trace returns to over -2. It has been discovered that the different threshold for onset and offset help with the small fluctuations within the trace. If peaks are very close to the threshold one consecutive peak might be split in several small downward spikes without a defined offset score that is more lenient than the onset score. If peaks are being found in close proximity of 50 timepoints of each other they are being merged. This should prevent again splitting of peaks and resembles physiology where a cell cannot depolarize shortly after a depolarization. \
 It should be noted that this peak detection is still very rudimentary, since it depends on hard threshold only, which makes it’s adaptability limited. I have yet to find another way to do this. \
 From this peak detection events are being defined and fed into an event dataframe which gives each event in a trace an index and calculates characteristics of these events. \
+**Preprocessing Calcium Imaging:** \
+For Calcium imaging a simple min-max scaling is enough for normalization and dff calculations:
+```math
+dff = frac{(F_t-min)}{(max-min}
+```
+with min = Minimum value in the trace, max = maximum value in the trace, $F_t$ = trace at each timepoint \
+The Z-trace is calculated the same way as in the Voltage version:
+```math
+Z = \frac{(x_i - \mu)}{\sigma}
+```
+with $\mu$ = mean of the dataset, $x_i$ = datapoint at each timepoint, $\sigma$ = standard deviation \
+**Peak Detection Calcium Imaging:** \
+For Calcium imaging the peak Detection is taken mainly from the following post from StackOverflow: (https://stackoverflow.com/questions/22583391/peak-signal-detection-in-realtime-timeseries-data/43512887#43512887)
 **Dataframe calculations:** \
 Following characteristics are being defined on the event level: \
 Duration/total Duration: $d = (end - start) $ \
@@ -123,11 +136,20 @@ Event frequency: $Event_freq = \frac{count of events}{total time}$ \
 Dominant frequency: computed using the cwt command in python that computes a Morlet wavelet transform (https://www.sciencedirect.com/science/article/pii/S0888327007000994) \
 This lets one extract the wavelet coefficients of the trace, which can then be converted to power using the following calculation: $power = |c^2|$ \
 which represents the energy present. Then the frequencies are being capped to only show relevant frequencies rather than noise that might dominate the imaging. Then the mean power per scale is calculated and from that the maximum shows the dominant scale or frequency of the entire dataset. \
-Dominance ratio for that frequency: $dominance ratio = \frac{P(f_dom}{mean(P(f))}$ \
+Dominance ratio for that frequency: $dominance ratio = \frac{P(f_{dom})}{mean(P(f))}$ \
 Z_scores of that frequency: $Z = \frac{p - \mu f}{\sigma f}$ \
 with $\mu f$ = mean of frequencies, $\sigma f$ = standard deviation of frequencies
 These dataframes are being saved as pickles (.pkl) to preserve python objects and avoid loading the entire timeseries into the storage space when I can simply work on the dataframe itself.
 Furthermore more characteristics may be calculated once I find the need for them. 
-
-
-
+ ## Limitations and future plans
+ -hardcoded saving variables will be removed/exchanged with an UI
+ -hardcoded entry paths may be considered to be exchanged with an UI
+ -hardcoded thresholds and variables will be reconsidered
+ -peak detection on Calcium needs refinement
+   -there is a bug in the peak detection for Calcium overall making the output of n_events always 0 although peaks are being detected
+  -peak detection on Voltage traces is still crude and may be improved
+  -dual imaging napari ROI picker will be improved
+  -plotting and analysis will be separated 
+  -more tests may be carried out to see performance also on Calcium datasets
+  -Dependencies will be evaluated
+  -...
