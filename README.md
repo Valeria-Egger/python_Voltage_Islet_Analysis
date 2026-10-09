@@ -26,8 +26,108 @@ This dataframe is being saved as a pickle file and can be reused for plotting in
 ## Information about Calculations
 Aquisition parameters:
 The images obtained were imaged with a frequency between 55 Hz and 780 Hz. However most images are either imaged with 100, 200 or 300 Hz respectively, which is the main focus of later processing steps. 
-The reasoning for this range of frequencies is mainly taken from other papers and trial and error (hence the huge range of frequencies). However to formalize this step I calculated the Nyquist limit for my endocrine voltage events. Literature claims that endocrine voltage events are between 50 and 200 ms. 
-f_s=2/T=2/0.05=40
-f_s=2/T=2/0.2=10
+The reasoning for this range of frequencies is mainly taken from other papers and trial and error (hence the huge range of frequencies). However to formalize this step I calculated the Nyquist limit for my endocrine voltage events. Literature claims that endocrine voltage events are between 50 and 200 ms. \
+```math
+f_s=\frac{2}{T} =\frac{2}{0.05} = 40
+```
+```math
+f_s=\frac{2}{T}=\frac{2}{0.2}=10
+```
+Since we like an oversampling of 3-5 times the Nyquist limit to actually resolve events that would translate to 120-200 Hz (for 50 ms events). In case that there are shorter events higher frequencies were also applied. Overall the band of 100-300 Hz should resolve the expected events.
+Most of the time 4x4 Binning was applied to the images to boost signal to noise ratio already in the acquisition step. In some cases a 2x2 Binning was deemed as sufficient to further process the timeseries. This may interfere with cell identification.
+
+**Quality control:**\
+A small control step was implemented to check pictures for motion, focus drift, expression and bleaching.\
+**Motion score**:\
+For each frame the absolute difference between the pixels in this frame and the previous frame is calculated and the averaged over all pixels to collapse the absolute difference into one number per timepoint. The absolute difference has the advantage that positive and negative signs will be ignored and cannot cancel themselves out. This should mainly detect big changes that affect many pixels in the frame, rather than intensity changes that my signals would produce (but only in a subset of pixels that should be mostly cancelled out by averaging over all pixels including background that should not move at all). Due to noise and small fluctuations the motion score will never be zero. Therefore the mean of all timepoints is normalized to the mean expression level in the timeseries.
+Source:
+(https://opencv.org/autofocus-using-opencv-a-comparative-study-of-focus-measures-for-sharpness-assessment/#h-explanation-of-different-focus-measurement-techniques) \
+**Focus score:**\
+For focus score the Laplacian variance is being used as a metric on how blurry the image is. It measures the variance of the Laplacian response, assuming that sharper edges produce higher variance while blurry edges produce lower variance.
+
+```math
+\sum_{x,y} |\nabla^2 I (x, y)
+```
+with $\nabla^2(x, y)$ is the Laplacian \
+Source:
+(https://opencv.org/autofocus-using-opencv-a-comparative-study-of-focus-measures-for-sharpness-assessment/#h-explanation-of-different-focus-measurement-techniques) \
+**Expression Score:**\
+Simply calculates the pixel intensities of the whole image, if the image is brighter there is bright signal. Also the expression level of the image is being used as a normalization for the other metrics. \
+**Bleaching rate:**\
+Bleaching is estimated as a linear regression over the intensity of the pixels. The slope of this fitted linear regression is then stored as the bleaching rate. I use a linear regression here rather than a bi-exponential fit (which according to some sources should estimate bleaching better) because some of my traces fail on this fit, while the linear regression seems to be more stable for me at least. While I can measure bleaching and correct for it in the trace, it is impossible to recover worsening SNR ratio introduced by this bleaching, limiting my acquisition time to around 5-10 minutes (depending on signal strength, microscope that I use and other things). 
+
+```math
+I_t = \alpha + \beta t + \epsilon _t
+```
+with $\alpha$ = intercept, $\beta$ = slope (bleaching rate), $\epsilon _t$ = residuals \
+
+After passing these metrics the dataset is further processed. \
+**Motion correction:** \
+Motion correction:
+As motion correction NormCorre is used. NormCorre is a rigid and non-rigid motion correction algorithm that splits the image into overlapping patches and arranges each patch to a template it creates out of the first few hundred frames of the time series. It has been developed for in vivo motion correction and can therefore correct for breathing, heartbeat and blood flow but also deformations of the islet in the ex vivo culture. \
+Source:
+(https://www.sciencedirect.com/science/article/pii/S0165027017302753) \
+**Preprocessing steps:** \
+The mean intensity of each ROI is stored as an 3D array with form HxWxT.
+For baseline estimation a lowpass filter is being applied to the trace. This filters out all frequencies above a certain cutoff that is dependent on the sampling frequency in the following manner: \
+Cutoff: $\frac{0.05}{\frac{f_s}{2}}$ \
+To be totally honest here the 0.05 was simply chosen by testing several numbers that were mentioned by the internet for “useful” lowpass filtering ranges and taking the best one. This needs adjustment for sure. 
+After getting the baseline now only consisting of the frequencies below the threshold the trace is normalized using the baseline.\
+```math
+dff = (\frac{F_t - F_0}{F_0})
+```
+with dff = normalized trace, $F_t$ = trace at time t, $F_0$ = baseline \
+
+This normalization step already helps with bleaching, removes artefacts and let’s the trace start at 0. The changes are easily converted in percentages by multiplying them with 100, which makes comparisons easier and amplitude more intuitive. 
+According to literature voltage events from this sensor (Voltron2) are most commonly found in the 3-8% range, sometimes they can be higher (up to 15-20%) but the expected range is mostly 3-8%. \
+**Peak Detection:** \
+For peak detection a Z-score algorithm was implemented. 
+First of all the median of the trace is added to the dff to restore the baseline of the trace and prevents events from contaminating the Z-scores.
+Then a quiet window is defined using the upper 50 percent for the residual trace that is the quiet window. This is because voltron2 produces downwards spikes therefore there is a higher probability that anything in these upper 50% of the trace are not signals but noise.
+This could however be risky if we look at repolarisation, however I have yet to find a better definition for a quiet window.
+Standard deviation was tried for the traces but those produced huge Z-scores for silent windows and more balanced but smaller Z-scores for windows with actual events. Therefore the Mean absolute deviation was used.
+```math
+MAD = \frac{1}{n} \sum_{i=1}^n |x_i - \mu |
+```
+with $x_i$ = each datapoint, $\mu$ = mean of datasets, $n$ = number of observations, $|x_i - \mu |$ = absolute deviation of each datapoint from the mean. \
+this assumes a gaussian distribution of the datapoints that I have not yet in fact shown to be actually there to be honest. However apparently many people use this exact method. \
+To then estimate the standard deviation from the MAD (with a gaussian distribution) the following formula was used: 
+```math
+\sigma = \frac{MAD}{0.6745} = 1.4826 \cdot MAD
+```
+This estimation for the standard deviation allowed for a more stable Z-score calculation later on. However I still have some problems with rather high Z-scores in silent windows that may inflate the positive rates in these windows. I have to yet find a solution for this problem. One possibility might be to couple it to a hard threshold that has to be met before calling a spike an event. \
+To calculate the Z-scores the typical formula was used: \
+```math
+Z = \frac{(x_i - \mu)}{\sigma}
+```
+with $\mu$ = mean of the dataset, $x_i$ = datapoint at each timepoint, $\sigma$ = standard deviation estimate using the MAD \
+Right now in order to call something an event hard threshold are defined. For onset of an event a threshold of -3 has to be met. For this event to stop being an event the signal has to return to a Z-score of under -2. Whenever the trace drops below the -3 mark the detector starts calling $x_i$ an event. This event stops only when the trace returns to over -2. It has been discovered that the different threshold for onset and offset help with the small fluctuations within the trace. If peaks are very close to the threshold one consecutive peak might be split in several small downward spikes without a defined offset score that is more lenient than the onset score. If peaks are being found in close proximity of 50 timepoints of each other they are being merged. This should prevent again splitting of peaks and resembles physiology where a cell cannot depolarize shortly after a depolarization. \
+It should be noted that this peak detection is still very rudimentary, since it depends on hard threshold only, which makes it’s adaptability limited. I have yet to find another way to do this. \
+From this peak detection events are being defined and fed into an event dataframe which gives each event in a trace an index and calculates characteristics of these events. \
+**Dataframe calculations:** \
+Following characteristics are being defined on the event level: \
+Duration/total Duration: $d = (end - start) $ \
+Duration in seconds: $d_s = \frac{(end - start}{f_s}$ \
+with $f_s$ = sampling rate \
+Amplitude : Minimum of the trace (negative going indicator) for the event at that timepoint. \
+Area: $area = \sum x_i$ \
+with $x_i$ = datapoint at each timepoint \
+cumulative sum for Area under the curve estimation. \
+Furthermore the event dataframe saves start and end indexes of each event, trace ID, event ID and sampling rate.
+Then to make comparisons not only between events but also between cells (traces) and whole datasets a summary dataframe has been implemented measuring the following characteristics of the traces: \
+Count of events \
+Mean/median amplitude \
+Mean/median duration \
+Total area under the curve \
+Event frequency: $Event_freq = \frac{count of events}{total time}$ \
+Dominant frequency: computed using the cwt command in python that computes a Morlet wavelet transform (https://www.sciencedirect.com/science/article/pii/S0888327007000994) \
+This lets one extract the wavelet coefficients of the trace, which can then be converted to power using the following calculation: $power = |c^2|$ \
+which represents the energy present. Then the frequencies are being capped to only show relevant frequencies rather than noise that might dominate the imaging. Then the mean power per scale is calculated and from that the maximum shows the dominant scale or frequency of the entire dataset. \
+Dominance ratio for that frequency: $dominance ratio = \frac{P(f_dom}{mean(P(f))}$ \
+Z_scores of that frequency: $Z = \frac{p - \mu f}{\sigma f}$ \
+with $\mu f$ = mean of frequencies, $\sigma f$ = standard deviation of frequencies
+These dataframes are being saved as pickles (.pkl) to preserve python objects and avoid loading the entire timeseries into the storage space when I can simply work on the dataframe itself.
+Furthermore more characteristics may be calculated once I find the need for them. 
+
 
 
