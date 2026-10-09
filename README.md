@@ -41,7 +41,7 @@ A small control step was implemented to check pictures for motion, focus drift, 
 **Motion score**:\
 For each frame the absolute difference between the pixels in this frame and the previous frame is calculated and the averaged over all pixels to collapse the absolute difference into one number per timepoint. The absolute difference has the advantage that positive and negative signs will be ignored and cannot cancel themselves out. This should mainly detect big changes that affect many pixels in the frame, rather than intensity changes that my signals would produce (but only in a subset of pixels that should be mostly cancelled out by averaging over all pixels including background that should not move at all). Due to noise and small fluctuations the motion score will never be zero. Therefore the mean of all timepoints is normalized to the mean expression level in the timeseries.
 Source:
-(https://opencv.org/autofocus-using-opencv-a-comparative-study-of-focus-measures-for-sharpness-assessment/#h-explanation-of-different-focus-measurement-techniques) \
+(https://medium.com/@krrish.kumbhare_84672/motion-detection-in-videos-using-frame-differencing-a4ab5a8663dc) \
 **Focus score:**\
 For focus score the Laplacian variance is being used as a metric on how blurry the image is. It measures the variance of the Laplacian response, assuming that sharper edges produce higher variance while blurry edges produce lower variance.
 
