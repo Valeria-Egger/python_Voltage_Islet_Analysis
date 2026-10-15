@@ -277,8 +277,8 @@ for tid in df_traces.trace_id.unique():
         mask = (glucose == g)
         segment_signal = trace[mask]
         segment_time = time[mask]
-        auc = np.trapz(segment_signal, segment_time)
-        abs_auc = np.trapz(np.abs(segment_signal), segment_time)
+        auc = np.trapezoid(segment_signal, segment_time)
+        abs_auc = np.trapezoid(np.abs(segment_signal), segment_time)
         summary_rows.append({
             "dataset": dataset,
             "condition": condition,
