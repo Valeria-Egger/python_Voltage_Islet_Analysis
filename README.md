@@ -11,6 +11,7 @@ It is recommended to run the analysis in a dedicated environment installed with 
 ### Napari ROI picker
 One starts by running the file "Napari_ROI_picker.py". This expects a .tiff timeseries with the dimensions HxWxT. It is not currently possible to load a 4D image (HxWxZxT) in this script only one plane for selection is supported. The script provides an interactive plot to quickly check traces already at this step for potential activity but also to check Z-dirfts or motion artefacts and potentially correct them. For motion correction a Matlab script is used for now. 
 The script saves all ROIs in a .npy format which is then used for further Analysis.
+Now there is also the possibility to draw ROIs yourself or do it with Stardist in napari, then take the shapes layer from napari and convert it to the ROIs via the script "csv_to_ROI.py". I will implement a more elegant solution at some point.
 ### Load data
 Once the .npy files are obtained one proceeds with the file "load_data.py". This script includes normalization of the trace, dff calculations as well as Z-scores that will later be used for peak detection. Furthermore this is the place to initialize variables for perfusion setups, frame rates and conditions. Also it is the place to tell the script whether one uses Calcium or Voltage data to analyze which changes the calculations of the aforementioned metrics. The data is stored in a dataframe with the fields "dataset" (for the name of the dataset, can be set by the user), "trace_id" (to distinguish individual traces), "condition" (for example beta-ablated and control, can be set by the user), "fs" (framerate, can be set by the user), "time" (depends on framerate), "signal" (the raw traces), "background" (the raw background traces), "baseline" (the calculated baseline of each trace), "dff" (the calculated dff of each trace), "z" (the calculated z-scores of each trace), "glucose" (the perfusion conditions for each timepoint of each trace)
 This dataframe is stored as a pickle for further processing. 
@@ -152,4 +153,5 @@ Furthermore more characteristics may be calculated once I find the need for them
   -plotting and analysis will be separated \
   -more tests may be carried out to see performance also on Calcium datasets \
   -Dependencies will be evaluated \
+  -csv_to_ROI is just a short workaround and needs refactoring and integration \
   -...
