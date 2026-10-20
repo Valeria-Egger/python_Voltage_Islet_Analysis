@@ -108,7 +108,7 @@ From this peak detection events are being defined and fed into an event datafram
 **Preprocessing Calcium Imaging:** \
 For Calcium imaging a simple min-max scaling is enough for normalization and dff calculations:
 ```math
-dff = frac{(F_t-min)}{(max-min}
+dff = frac{(F_t-min)}{(max-min)}
 ```
 with min = Minimum value in the trace, max = maximum value in the trace, $F_t$ = trace at each timepoint \
 The Z-trace is calculated the same way as in the Voltage version:
